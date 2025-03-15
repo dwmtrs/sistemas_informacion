@@ -1,60 +1,84 @@
 import sqlite3
+import pandas as pd
 import numpy as np
 
 cnx = sqlite3.connect('sistemas_info.db')
-cursor = cnx.cursor()
 
-cursor.execute("SELECT COUNT(*) FROM tickets_emitidos")
-num_muestras_totales = cursor.fetchone()[0]
-print(f"Numero de muestras totales: {num_muestras_totales}")
+df_tickets = pd.read_sql_query("SELECT COUNT(*) AS total_tickets FROM tickets_emitidos", cnx)
+total_tickets = df_tickets['total_tickets'].iloc[0]
 
-cursor.execute("SELECT satisfaccion_cliente FROM tickets_emitidos WHERE satisfaccion_cliente >= 5")
-satisfacciones = [row[0] for row in cursor.fetchall()]
+df_incidentes = pd.read_sql_query("""
+SELECT satisfaccion_cliente 
+FROM tickets_emitidos
+WHERE satisfaccion_cliente >= 5
+""", cnx)
+media_incidentes_5 = df_incidentes['satisfaccion_cliente'].mean()
+desviacion_incidentes_5 = df_incidentes['satisfaccion_cliente'].std()
 
-media_satisfaccion = np.mean(satisfacciones)
-desviacion_satisfaccion = np.std(satisfacciones)
-print(f"Media de satisfacción (valoración >= 5): {media_satisfaccion}")
-print(f"Desviación estándar de satisfacción (valoración >= 5): {desviacion_satisfaccion}")
+df_incidentes_por_cliente = pd.read_sql_query("""
+SELECT cliente, COUNT(*) AS total_incidentes
+FROM tickets_emitidos
+GROUP BY cliente
+""", cnx)
+media_incidentes_cliente = df_incidentes_por_cliente['total_incidentes'].mean()
+desviacion_incidentes_cliente = df_incidentes_por_cliente['total_incidentes'].std()
 
-cursor.execute("SELECT cliente, COUNT(*) FROM tickets_emitidos GROUP BY cliente")
-num_incidentes = [row[1] for row in cursor.fetchall()]
+df_horas_totales = pd.read_sql_query("""
+SELECT ticket_id, SUM(tiempo) AS total_horas
+FROM contactos_con_empleados
+GROUP BY ticket_id
+""", cnx)
+media_horas_totales = df_horas_totales['total_horas'].mean()
+desviacion_horas_totales = df_horas_totales['total_horas'].std()
 
-media_incidentes_cliente = np.mean(num_incidentes)
-desviacion_incidentes_cliente = np.std(num_incidentes)
-print(f"Media de incidentes por cliente: {media_incidentes_cliente}")
-print(f"Desviación estándar de incidentes por cliente: {desviacion_incidentes_cliente}")
+df_horas_por_empleado = pd.read_sql_query("""
+SELECT id_emp, SUM(tiempo) AS total_horas
+FROM contactos_con_empleados
+GROUP BY id_emp
+""", cnx)
+min_horas_empleado = df_horas_por_empleado['total_horas'].min()
+max_horas_empleado = df_horas_por_empleado['total_horas'].max()
 
-cursor.execute("SELECT ticket_id, SUM(tiempo) FROM contactos_con_empleados GROUP BY ticket_id")
-horas_totales = [row[1] for row in cursor.fetchall()]
+df_tiempos_incidente = pd.read_sql_query("""
+SELECT fecha_apertura, fecha_cierre
+FROM tickets_emitidos
+WHERE fecha_apertura IS NOT NULL AND fecha_cierre IS NOT NULL
+""", cnx)
 
-media_horas_incidente = np.mean(horas_totales)
-desviacion_horas_incidente = np.std(horas_totales)
-print(f"Media de horas por incidente: {media_horas_incidente}")
-print(f"Desviación estándar de horas por incidente: {desviacion_horas_incidente}")
+df_tiempos_incidente['fecha_apertura'] = pd.to_datetime(df_tiempos_incidente['fecha_apertura'])
+df_tiempos_incidente['fecha_cierre'] = pd.to_datetime(df_tiempos_incidente['fecha_cierre'])
+df_tiempos_incidente['tiempo_abierto'] = (df_tiempos_incidente['fecha_cierre'] - df_tiempos_incidente['fecha_apertura']).dt.total_seconds() / 3600
 
-cursor.execute("SELECT id_emp, SUM(tiempo) FROM contactos_con_empleados GROUP BY id_emp")
-horas_empleado = [row[1] for row in cursor.fetchall()]
+min_tiempo_incidente = df_tiempos_incidente['tiempo_abierto'].min()
+max_tiempo_incidente = df_tiempos_incidente['tiempo_abierto'].max()
 
-min_horas_empleado = np.min(horas_empleado)
-max_horas_empleado = np.max(horas_empleado)
-print(f"Valor mínimo de horas por empleado: {min_horas_empleado}")
-print(f"Valor máximo de horas por empleado: {max_horas_empleado}")
+df_incidentes_atendidos_por_empleado = pd.read_sql_query("""
+SELECT id_emp, COUNT(*) AS total_incidentes
+FROM contactos_con_empleados
+GROUP BY id_emp
+""", cnx)
 
-cursor.execute("SELECT JULIANDAY(fecha_cierre) - JULIANDAY(fecha_apertura) FROM tickets_emitidos")
-duraciones = [row[0] for row in cursor.fetchall()]
+min_incidentes_empleado = df_incidentes_atendidos_por_empleado['total_incidentes'].min()
+max_incidentes_empleado = df_incidentes_atendidos_por_empleado['total_incidentes'].max()
 
-min_duracion = np.min(duraciones)
-max_duracion = np.max(duraciones)
-print(f"Valor mínimo de duración (en días): {min_duracion}")
-print(f"Valor máximo de duración (en días): {max_duracion}")
-
-cursor.execute("SELECT id_emp, COUNT(ticket_id) FROM contactos_con_empleados GROUP BY id_emp")
-incidentes_atendidos = [row[1] for row in cursor.fetchall()]
-
-min_incidentes_atendidos = np.min(incidentes_atendidos)
-max_incidentes_atendidos = np.max(incidentes_atendidos)
-print(f"Valor mínimo de incidentes atendidos: {min_incidentes_atendidos}")
-print(f"Valor máximo de incidentes atendidos: {max_incidentes_atendidos}")
-
-cursor.close()
 cnx.close()
+
+print("Número de muestras totales:", total_tickets)
+print("Media y desviación estándar de incidentes con valoración >= 5:")
+print("Media:", media_incidentes_5)
+print("Desviación estándar:", desviacion_incidentes_5)
+print("Media y desviación estándar de incidentes por cliente:")
+print("Media:", media_incidentes_cliente)
+print("Desviación estándar:", desviacion_incidentes_cliente)
+print("Media y desviación estándar de horas totales realizadas por incidente:")
+print("Media:", media_horas_totales)
+print("Desviación estándar:", desviacion_horas_totales)
+print("Valor mínimo y valor máximo de horas realizadas por los empleados:")
+print("Mínimo:", min_horas_empleado)
+print("Máximo:", max_horas_empleado)
+print("Valor mínimo y valor máximo del tiempo entre apertura y cierre de incidente (en horas):")
+print("Mínimo:", min_tiempo_incidente)
+print("Máximo:", max_tiempo_incidente)
+print("Valor mínimo y valor máximo del número de incidentes atendidos por cada empleado:")
+print("Mínimo:", min_incidentes_empleado)
+print("Máximo:", max_incidentes_empleado)
