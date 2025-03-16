@@ -100,18 +100,18 @@ fraude_por_dia_semana["dia_semana"] = pd.Categorical(fraude_por_dia_semana["dia_
 fraude_por_dia_semana = fraude_por_dia_semana.sort_values("dia_semana")
 
 # **Resultados**
-print("\n📌 Número total de incidentes de tipo 'Fraude':", num_incidentes_fraude)
-print("\n📌 Número de actuaciones por empleado:")
+print("\n Número total de incidentes de tipo 'Fraude':", num_incidentes_fraude)
+print("\n Número de actuaciones por empleado:")
 print(num_actuaciones_por_empleado)
 
-print("\n📌 Análisis por empleado:")
+print("\n Análisis por empleado:")
 print(fraude_por_empleado)
 
-print("\n📌 Análisis por nivel de empleado:")
+print("\n Análisis por nivel de empleado:")
 print(fraude_por_nivel)
 
-print("\n📌 Análisis por cliente:")
+print("\n Análisis por cliente:")
 print(fraude_por_cliente)
 
-print("\n📌 Análisis por día de la semana:")
+print("\n Análisis por día de la semana:")
 print(fraude_por_dia_semana)
