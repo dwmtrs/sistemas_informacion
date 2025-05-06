@@ -38,6 +38,11 @@ scripts = {
         "name": "Top Tipos de Incidencias por Tiempo",
         "description": "Muestra el top X de tipos de incidencias que han requerido mayor tiempo de resolución",
         "file_path": "top_tipos_incidencias_tiempo.py"
+    },
+    "ultimos_cves": {
+        "name": "Últimas CVEs",
+        "description": "Muestra las últimas 10 vulnerabilidades reportadas (CVE)",
+        "file_path": "top10_vulnerabilidades.py"
     }
 }
 
@@ -545,6 +550,7 @@ def ejecutar_script(script_id):
             "error": str(e),
             "traceback": error_traceback
         }), 500
+
 
 
 if __name__ == '__main__':
