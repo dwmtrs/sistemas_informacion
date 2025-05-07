@@ -4,6 +4,7 @@ import sys
 import io
 import os
 from contextlib import redirect_stdout
+import pandas as pd
 
 app = Flask(__name__)
 
@@ -44,11 +45,17 @@ scripts = {
         "description": "Muestra las últimas 10 vulnerabilidades reportadas (CVE)",
         "file_path": "top10_vulnerabilidades.py"
     },
+    "metricas_avanzadas": {
+        "name": "Métricas Avanzadas",
+        "description": "Análisis de tiempos de resolución por tipo de incidencia",
+        "file_path": "AnalisisMetricas.py"
+    },
     "nvd": {
         "name": "Buscar CVEs por palabra clave",
         "description": "Consulta vulnerabilidades en NVD relacionadas con una palabra clave",
         "file_path": "vulnerabilidades_nvd.py"
     }
+
 }
 
 
@@ -561,9 +568,20 @@ def ejecutar_script(script_id):
                                 'columns': resultado_empleados.columns.tolist(),
                                 'data': resultado_empleados.values.tolist()
                             })
+
                 elif script_id == 'nvd' and 'keyword' in params:
                     keyword = params['keyword']
                     resultado = namespace['ejecutar'](keyword)
+
+                elif script_id == 'metricas_avanzadas':  # Nuevo caso para métricas
+                    resultado = namespace['ejecutar']()
+                    # Procesar múltiples DataFrames
+                    if isinstance(resultado, list):
+                        table_data = [{
+                            'columns': df.columns.tolist(),
+                            'data': df.values.tolist()
+                        } for df in resultado if isinstance(df, pd.DataFrame)]
+
                 else:
                     resultado = namespace['ejecutar']()
                     table_data = None
