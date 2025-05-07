@@ -79,3 +79,4 @@ def ejecutar():
     except Exception as e:
         print(f"Error: {str(e)}")
         return pd.DataFrame()  # Devuelve DataFrame vacío en caso de error
+
