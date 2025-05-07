@@ -123,3 +123,4 @@ def predecir(ticket_data, modelo):
         raise ValueError("Modelo no válido")
 
     return 'Crítico' if prediccion == 1 else 'No Crítico'
+
