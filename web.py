@@ -4,9 +4,7 @@ import sys
 import io
 import os
 from contextlib import redirect_stdout
-from datetime import datetime
 import pandas as pd
-import joblib
 
 app = Flask(__name__)
 
@@ -47,12 +45,19 @@ scripts = {
         "description": "Muestra las últimas 10 vulnerabilidades reportadas (CVE)",
         "file_path": "top10_vulnerabilidades.py"
     },
-    "prediccion": {
-        "name": "Predicción de Ticket Crítico",
-        "description": "Predice si un ticket es crítico usando modelos de machine learning",
-        "file_path": "ia.py"
+    "metricas_avanzadas": {
+        "name": "Métricas Avanzadas",
+        "description": "Análisis de tiempos de resolución por tipo de incidencia",
+        "file_path": "AnalisisMetricas.py"
+    },
+    "nvd": {
+        "name": "Buscar CVEs por palabra clave",
+        "description": "Consulta vulnerabilidades en NVD relacionadas con una palabra clave",
+        "file_path": "vulnerabilidades_nvd.py"
     }
+
 }
+
 
 def get_script_content(script_id):
     """Lee el contenido del archivo del script."""
@@ -65,6 +70,7 @@ def get_script_content(script_id):
         else:
             return None
     return None
+
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -113,7 +119,7 @@ HTML_TEMPLATE = """
         .error {
             color: red;
         }
-        .params-form, .prediccion-form {
+        .params-form {
             margin-top: 10px;
             margin-bottom: 10px;
             padding: 10px;
@@ -127,8 +133,8 @@ HTML_TEMPLATE = """
             align-items: center;
             margin-bottom: 10px;
         }
-        input[type=number], input[type=text], input[type=date] {
-            width: 100px;
+        input[type=number] {
+            width: 60px;
             padding: 5px;
             margin-right: 10px;
         }
@@ -179,6 +185,7 @@ HTML_TEMPLATE = """
     </div>
 
     <script>
+        // Datos de los scripts
         const scripts = {
             {% for id, script in scripts.items() %}
             "{{ id }}": {
@@ -188,6 +195,7 @@ HTML_TEMPLATE = """
             {% endfor %}
         };
 
+        // Crear elementos HTML para cada script
         const scriptsContainer = document.getElementById('scripts-container');
 
         for (const [id, script] of Object.entries(scripts)) {
@@ -252,6 +260,7 @@ HTML_TEMPLATE = """
                 paramsForm.id = `params-${id}`;
                 paramsForm.style.display = 'none';
 
+                // Primera fila: tipo de visualización
                 const viewTypeRow = document.createElement('div');
                 viewTypeRow.className = 'form-row';
 
@@ -261,6 +270,7 @@ HTML_TEMPLATE = """
                 const radioGroup = document.createElement('div');
                 radioGroup.className = 'radio-group';
 
+                // Opción Solo Clientes
                 const clientesOption = document.createElement('div');
                 clientesOption.className = 'radio-option';
 
@@ -278,6 +288,7 @@ HTML_TEMPLATE = """
                 clientesOption.appendChild(clientesRadio);
                 clientesOption.appendChild(clientesLabel);
 
+                // Opción Ambos
                 const ambosOption = document.createElement('div');
                 ambosOption.className = 'radio-option';
 
@@ -300,6 +311,7 @@ HTML_TEMPLATE = """
                 viewTypeRow.appendChild(viewTypeLabel);
                 viewTypeRow.appendChild(radioGroup);
 
+                // Segunda fila: Top X
                 const topRow = document.createElement('div');
                 topRow.className = 'form-row';
 
@@ -328,6 +340,7 @@ HTML_TEMPLATE = """
                 topRow.appendChild(topInput);
                 topRow.appendChild(rangeDisplay);
 
+                // Botón de aplicar
                 const executeButton = document.createElement('button');
                 executeButton.textContent = 'Aplicar';
                 executeButton.onclick = function() {
@@ -338,83 +351,44 @@ HTML_TEMPLATE = """
                 paramsForm.appendChild(topRow);
                 paramsForm.appendChild(executeButton);
             }
-
-            if (id === 'prediccion') {
+            
+            if (id === 'nvd') {
                 paramsForm = document.createElement('div');
-                paramsForm.className = 'prediccion-form';
+                paramsForm.className = 'params-form';
                 paramsForm.id = `params-${id}`;
                 paramsForm.style.display = 'none';
+            
+                const formRow = document.createElement('div');
+                formRow.className = 'form-row';
+            
+                const label = document.createElement('label');
+                label.textContent = 'Keyword:';
+            
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.id = `keyword-${id}`;
+                input.value = 'apache';
+            
+                formRow.appendChild(label);
+                formRow.appendChild(input);
 
-                const fields = [
-                    { label: 'Cliente:', id: 'cliente', type: 'text' },
-                    { label: 'Fecha de apertura:', id: 'fecha_apertura', type: 'date' },
-                    { label: 'Fecha de cierre:', id: 'fecha_cierre', type: 'date' },
-                    { label: 'Es mantenimiento:', id: 'es_mantenimiento', type: 'checkbox' },
-                    { label: 'Satisfacción del cliente:', id: 'satisfaccion_cliente', type: 'number', min: 1, max: 10 },
-                    { label: 'Tipo de incidencia:', id: 'tipo_incidencia', type: 'text' },
-                    { label: 'Número de contactos:', id: 'num_contactos', type: 'number', min: 0 },
-                    { label: 'Tiempo total de contactos:', id: 'tiempo_total_contactos', type: 'number', step: 0.1 }
-                ];
-
-                fields.forEach(field => {
-                    const row = document.createElement('div');
-                    row.className = 'form-row';
-
-                    const label = document.createElement('label');
-                    label.textContent = field.label;
-
-                    const input = document.createElement('input');
-                    input.id = `${field.id}-${id}`;
-                    input.name = field.id;
-                    input.type = field.type;
-                    if (field.min !== undefined) input.min = field.min;
-                    if (field.max !== undefined) input.max = field.max;
-                    if (field.step !== undefined) input.step = field.step;
-
-                    row.appendChild(label);
-                    row.appendChild(input);
-                    paramsForm.appendChild(row);
-                });
-
-                const modelRow = document.createElement('div');
-                modelRow.className = 'form-row';
-
-                const modelLabel = document.createElement('label');
-                modelLabel.textContent = 'Modelo:';
-
-                const select = document.createElement('select');
-                select.id = `modelo-${id}`;
-                select.name = 'modelo';
-                const options = [
-                    { value: 'log_reg', text: 'Regresión Logística' },
-                    { value: 'tree', text: 'Árbol de Decisión' },
-                    { value: 'rf', text: 'Bosque Aleatorio' }
-                ];
-                options.forEach(opt => {
-                    const option = document.createElement('option');
-                    option.value = opt.value;
-                    option.textContent = opt.text;
-                    select.appendChild(option);
-                });
-
-                modelRow.appendChild(modelLabel);
-                modelRow.appendChild(select);
-                paramsForm.appendChild(modelRow);
-
-                const predictButton = document.createElement('button');
-                predictButton.textContent = 'Predecir';
-                predictButton.onclick = function() {
-                    enviarPrediccion(id);
+                const executeButton = document.createElement('button');
+                executeButton.textContent = 'Buscar';
+                executeButton.onclick = function() {
+                    ejecutarScript(id);
                 };
 
-                paramsForm.appendChild(predictButton);
+                paramsForm.appendChild(formRow);
+                paramsForm.appendChild(executeButton);
             }
 
+            
             const button = document.createElement('button');
-            button.textContent = id === 'top_clientes' || id === 'top_incidencias' || id === 'prediccion' ? 'Configurar' : 'Ejecutar';
+            button.textContent = id === 'top_clientes' || id === 'top_incidencias' || id === 'nvd' ? 'Configurar' : 'Ejecutar';
             button.onclick = function() {
-                const formElement = document.getElementById(`params-${id}`);
-                if (formElement) {
+                if (id === 'top_clientes' || id === 'top_incidencias' || id === 'nvd') {
+                    // Solo mostrar el formulario de parámetros
+                    const formElement = document.getElementById(`params-${id}`);
                     formElement.style.display = formElement.style.display === 'none' ? 'flex' : 'none';
                 } else {
                     ejecutarScript(id);
@@ -436,27 +410,40 @@ HTML_TEMPLATE = """
             scriptsContainer.appendChild(scriptDiv);
         }
 
+        // Función para ejecutar el script
         function ejecutarScript(scriptId) {
             const outputDiv = document.getElementById(`output-${scriptId}`);
             outputDiv.style.display = 'block';
             outputDiv.innerHTML = 'Ejecutando...';
 
+            // Preparar parámetros según el script
             let params = {};
 
             if (scriptId === 'top_incidencias') {
                 const topN = document.getElementById(`top-n-${scriptId}`).value;
                 params = { top_n: topN };
             }
-
+            
             if (scriptId === 'top_clientes') {
                 const topN = document.getElementById(`top-n-${scriptId}`).value;
                 const viewType = document.querySelector(`input[name="view-type-${scriptId}"]:checked`).value;
-                params = { top_n: topN, view_type: viewType };
+
+                params = { 
+                    top_n: topN,
+                    view_type: viewType
+                };
             }
+            if (scriptId === 'nvd') {
+                const keyword = document.getElementById(`keyword-${scriptId}`).value;
+                params = { keyword };
+            }
+
 
             fetch(`/ejecutar/${scriptId}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify(params)
             })
             .then(response => response.json())
@@ -466,7 +453,10 @@ HTML_TEMPLATE = """
                 } else {
                     outputDiv.innerHTML = `<div class="success">${data.resultado}</div>`;
                     outputDiv.innerHTML += `<pre>${data.output}</pre>`;
+
+                    // Si hay datos de tabla, mostrarlos
                     if (data.table_data && Array.isArray(data.table_data)) {
+                        // Mostrar múltiples tablas
                         data.table_data.forEach(tabla => {
                             if (tabla.title) {
                                 outputDiv.innerHTML += `<h3>${tabla.title}</h3>`;
@@ -474,6 +464,7 @@ HTML_TEMPLATE = """
                             outputDiv.innerHTML += crearTablaHTML(tabla);
                         });
                     } else if (data.table_data) {
+                        // Mostrar una sola tabla
                         outputDiv.innerHTML += crearTablaHTML(data.table_data);
                     }
                 }
@@ -483,49 +474,22 @@ HTML_TEMPLATE = """
             });
         }
 
-        function enviarPrediccion(scriptId) {
-            const outputDiv = document.getElementById(`output-${scriptId}`);
-            outputDiv.style.display = 'block';
-            outputDiv.innerHTML = 'Prediciendo...';
-
-            const data = {
-                cliente: document.getElementById(`cliente-${scriptId}`).value,
-                fecha_apertura: document.getElementById(`fecha_apertura-${scriptId}`).value,
-                fecha_cierre: document.getElementById(`fecha_cierre-${scriptId}`).value,
-                es_mantenimiento: document.getElementById(`es_mantenimiento-${scriptId}`).checked,
-                satisfaccion_cliente: parseInt(document.getElementById(`satisfaccion_cliente-${scriptId}`).value),
-                tipo_incidencia: document.getElementById(`tipo_incidencia-${scriptId}`).value,
-                num_contactos: parseInt(document.getElementById(`num_contactos-${scriptId}`).value),
-                tiempo_total_contactos: parseFloat(document.getElementById(`tiempo_total_contactos-${scriptId}`).value),
-                modelo: document.getElementById(`modelo-${scriptId}`).value
-            };
-
-            fetch('/prediccion', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(result => {
-                outputDiv.innerHTML = `<div class="success">Predicción: ${result.resultado}</div>`;
-            })
-            .catch(error => {
-                outputDiv.innerHTML = `<div class="error">Error: ${error}</div>`;
-            });
-        }
-
+        // Función para crear una tabla HTML a partir de datos
         function crearTablaHTML(data) {
             if (!data || !data.columns || !data.data || data.data.length === 0) {
                 return '';
             }
 
             let html = '<table>';
+
+            // Encabezados
             html += '<tr>';
             data.columns.forEach(column => {
                 html += `<th>${column}</th>`;
             });
             html += '</tr>';
 
+            // Filas de datos
             data.data.forEach(row => {
                 html += '<tr>';
                 row.forEach(cell => {
@@ -542,9 +506,11 @@ HTML_TEMPLATE = """
 </html>
 """
 
+
 @app.route('/')
 def index():
     return render_template_string(HTML_TEMPLATE, scripts=scripts)
+
 
 @app.route('/ejecutar/<script_id>', methods=['POST'])
 def ejecutar_script(script_id):
@@ -556,7 +522,9 @@ def ejecutar_script(script_id):
         return jsonify({"error": "Archivo de script no encontrado"}), 404
 
     try:
+        # Obtener parámetros si se proporcionan
         params = request.json or {}
+
         f = io.StringIO()
         with redirect_stdout(f):
             namespace = {}
@@ -569,6 +537,7 @@ def ejecutar_script(script_id):
                 elif script_id == 'top_clientes' and 'top_n' in params:
                     top_n = int(params['top_n'])
                     view_type = params.get('view_type', 'solo_clientes')
+
                     if view_type == 'solo_clientes':
                         resultado = namespace['ejecutar'](top_n, "clientes")
                         table_data = None
@@ -577,22 +546,42 @@ def ejecutar_script(script_id):
                                 'columns': resultado.columns.tolist(),
                                 'data': resultado.values.tolist()
                             }
-                    else:
+                    else:  # ambos
+                        # Ejecutar para clientes
                         resultado_clientes = namespace['ejecutar'](top_n, "clientes")
+                        # Ejecutar para empleados
                         resultado_empleados = namespace['ejecutar'](top_n, "empleados")
+
+                        # Crear formato para múltiples tablas
                         table_data = []
+
                         if 'pandas' in sys.modules and hasattr(resultado_clientes, 'to_dict'):
                             table_data.append({
                                 'title': f'Top {top_n} clientes con más incidencias',
                                 'columns': resultado_clientes.columns.tolist(),
                                 'data': resultado_clientes.values.tolist()
                             })
+
                         if 'pandas' in sys.modules and hasattr(resultado_empleados, 'to_dict'):
                             table_data.append({
                                 'title': f'Top {top_n} empleados con más tiempo en resolución',
                                 'columns': resultado_empleados.columns.tolist(),
                                 'data': resultado_empleados.values.tolist()
                             })
+
+                elif script_id == 'nvd' and 'keyword' in params:
+                    keyword = params['keyword']
+                    resultado = namespace['ejecutar'](keyword)
+
+                elif script_id == 'metricas_avanzadas':  # Nuevo caso para métricas
+                    resultado = namespace['ejecutar']()
+                    # Procesar múltiples DataFrames
+                    if isinstance(resultado, list):
+                        table_data = [{
+                            'columns': df.columns.tolist(),
+                            'data': df.values.tolist()
+                        } for df in resultado if isinstance(df, pd.DataFrame)]
+
                 else:
                     resultado = namespace['ejecutar']()
                     table_data = None
@@ -606,34 +595,24 @@ def ejecutar_script(script_id):
                 table_data = None
 
         output = f.getvalue()
-        response_data = {"resultado": "Script ejecutado correctamente", "output": output}
+
+        response_data = {
+            "resultado": "Script ejecutado correctamente",
+            "output": output
+        }
+
+        # Añadir datos de tabla si existen
         if 'table_data' in locals() and table_data:
             response_data["table_data"] = table_data
 
         return jsonify(response_data)
     except Exception as e:
         error_traceback = traceback.format_exc()
-        return jsonify({"error": str(e), "traceback": error_traceback}), 500
+        return jsonify({
+            "error": str(e),
+            "traceback": error_traceback
+        }), 500
 
-@app.route('/prediccion', methods=['POST'])
-def prediccion():
-    try:
-        data = request.json
-        modelo = data['modelo']
-        ticket_data = {k: v for k, v in data.items() if k != 'modelo'}
-
-        # Calcular duracion_ticket
-        fecha_apertura = datetime.strptime(ticket_data['fecha_apertura'], '%Y-%m-%d')
-        fecha_cierre = datetime.strptime(ticket_data['fecha_cierre'], '%Y-%m-%d')
-        duracion_ticket = (fecha_cierre - fecha_apertura).days
-        ticket_data['duracion_ticket'] = duracion_ticket
-
-        # Importar y usar la función predecir de ia.py
-        from ia import predecir
-        resultado = predecir(ticket_data, modelo)
-        return jsonify({"resultado": resultado})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

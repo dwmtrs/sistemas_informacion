@@ -32,7 +32,3 @@ def ejecutar(top_n=5):
     except Exception as e:
         print(f"Error: {str(e)}")
         return pd.DataFrame(columns=['ID', 'Tipo de Incidencia', 'Tiempo Medio (días)', 'Cantidad'])
-
-
-if __name__ == "__main__":
-    ejecutar()
