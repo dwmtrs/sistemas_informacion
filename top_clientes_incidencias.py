@@ -3,18 +3,6 @@ import sqlite3
 
 
 def ejecutar(top_n=5, tipo="clientes"):
-    """
-    Muestra el top X de clientes con más incidencias reportadas o
-    empleados que más tiempo han empleado en resolución de incidentes.
-
-    Args:
-        top_n (int): Número de elementos a mostrar en el top
-        tipo (str): "clientes" para mostrar top de clientes con incidencias,
-                   "empleados" para mostrar top de empleados por tiempo
-
-    Returns:
-        DataFrame: Resultados según el tipo seleccionado
-    """
     try:
         conn = sqlite3.connect('sistemas_info.db')
 
@@ -68,7 +56,3 @@ def ejecutar(top_n=5, tipo="clientes"):
     except Exception as e:
         print(f"Error: {str(e)}")
         return pd.DataFrame()
-
-
-if __name__ == "__main__":
-    ejecutar()
