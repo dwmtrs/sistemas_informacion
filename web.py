@@ -43,6 +43,11 @@ scripts = {
         "name": "Últimas CVEs",
         "description": "Muestra las últimas 10 vulnerabilidades reportadas (CVE)",
         "file_path": "top10_vulnerabilidades.py"
+    },
+    "nvd": {
+        "name": "Buscar CVEs por palabra clave",
+        "description": "Consulta vulnerabilidades en NVD relacionadas con una palabra clave",
+        "file_path": "vulnerabilidades_nvd.py"
     }
 }
 
@@ -339,11 +344,42 @@ HTML_TEMPLATE = """
                 paramsForm.appendChild(topRow);
                 paramsForm.appendChild(executeButton);
             }
+            
+            if (id === 'nvd') {
+                paramsForm = document.createElement('div');
+                paramsForm.className = 'params-form';
+                paramsForm.id = `params-${id}`;
+                paramsForm.style.display = 'none';
+            
+                const formRow = document.createElement('div');
+                formRow.className = 'form-row';
+            
+                const label = document.createElement('label');
+                label.textContent = 'Keyword:';
+            
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.id = `keyword-${id}`;
+                input.value = 'apache';
+            
+                formRow.appendChild(label);
+                formRow.appendChild(input);
 
+                const executeButton = document.createElement('button');
+                executeButton.textContent = 'Buscar';
+                executeButton.onclick = function() {
+                    ejecutarScript(id);
+                };
+
+                paramsForm.appendChild(formRow);
+                paramsForm.appendChild(executeButton);
+            }
+
+            
             const button = document.createElement('button');
-            button.textContent = id === 'top_clientes' || id === 'top_incidencias' ? 'Configurar' : 'Ejecutar';
+            button.textContent = id === 'top_clientes' || id === 'top_incidencias' || id === 'nvd' ? 'Configurar' : 'Ejecutar';
             button.onclick = function() {
-                if (id === 'top_clientes' || id === 'top_incidencias') {
+                if (id === 'top_clientes' || id === 'top_incidencias' || id === 'nvd') {
                     // Solo mostrar el formulario de parámetros
                     const formElement = document.getElementById(`params-${id}`);
                     formElement.style.display = formElement.style.display === 'none' ? 'flex' : 'none';
@@ -380,7 +416,7 @@ HTML_TEMPLATE = """
                 const topN = document.getElementById(`top-n-${scriptId}`).value;
                 params = { top_n: topN };
             }
-
+            
             if (scriptId === 'top_clientes') {
                 const topN = document.getElementById(`top-n-${scriptId}`).value;
                 const viewType = document.querySelector(`input[name="view-type-${scriptId}"]:checked`).value;
@@ -390,6 +426,11 @@ HTML_TEMPLATE = """
                     view_type: viewType
                 };
             }
+            if (scriptId === 'nvd') {
+                const keyword = document.getElementById(`keyword-${scriptId}`).value;
+                params = { keyword };
+            }
+
 
             fetch(`/ejecutar/${scriptId}`, {
                 method: 'POST',
@@ -520,6 +561,9 @@ def ejecutar_script(script_id):
                                 'columns': resultado_empleados.columns.tolist(),
                                 'data': resultado_empleados.values.tolist()
                             })
+                elif script_id == 'nvd' and 'keyword' in params:
+                    keyword = params['keyword']
+                    resultado = namespace['ejecutar'](keyword)
                 else:
                     resultado = namespace['ejecutar']()
                     table_data = None
