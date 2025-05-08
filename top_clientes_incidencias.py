@@ -22,8 +22,7 @@ def ejecutar(top_n=5, tipo="clientes"):
             df = pd.read_sql(query, conn, params=(top_n,))
             df.columns = ['ID', 'Cliente', 'Incidencias']
 
-            print(f"Top {top_n} clientes con más incidencias:")
-            print(df.to_string(index=False))
+
 
         elif tipo == "empleados":
             query = """
@@ -43,8 +42,7 @@ def ejecutar(top_n=5, tipo="clientes"):
             df = pd.read_sql(query, conn, params=(top_n,))
             df.columns = ['ID', 'Empleado', 'Tiempo Total (h)', 'Incidencias Atendidas', 'Tiempo Promedio (h)']
 
-            print(f"Top {top_n} empleados que más tiempo han dedicado a la resolución de incidentes:")
-            print(df.to_string(index=False))
+
 
         else:
             print(f"Tipo de consulta no válido: {tipo}")
