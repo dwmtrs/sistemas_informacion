@@ -5,7 +5,7 @@ import requests
 def ejecutar():
     url = "https://cve.circl.lu/api/last"
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, timeout=20)
         response.raise_for_status()
 
         cves = response.json()
@@ -17,14 +17,15 @@ def ejecutar():
         # Mostrar las 10 primeras vulnerabilidades
         print("Últimas 10 vulnerabilidades CVE:\n")
         for cve in cves[1:11]:
-            cve_id = cve.get('aliases', 'No disponible')
-            summary = cve.get('details', 'No hay descripción')
-            summary_formated = textwrap.fill(summary, width=80)
-            published = cve.get('published', 'No disponible')
+            metadata = cve.get('cveMetadata', {})
+            cve_id = metadata.get('cveId', 'No disponible')
+            name = metadata.get('assignerShortName', 'No hay descripción')
+            summary_formated = textwrap.fill(name, width=80)
+            published = metadata.get('datePublished', 'No disponible')
 
             print(f"CVE ID: {cve_id}")
             print(f"Fecha de Publicación: {published}")
-            print(f"Descripción: {summary_formated}")
+            print(f"Nombre: {summary_formated}")
             print("-" * 60)
 
     except requests.RequestException as e:
