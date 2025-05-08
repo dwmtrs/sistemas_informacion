@@ -42,7 +42,7 @@ scripts = {
         "file_path": "top_tipos_incidencias_tiempo.py"
     },
     "ultimos_cves": {
-        "name": "Últimas CVEs",
+        "name": "Últimas vulnerabilidades",
         "description": "Muestra las últimas 10 vulnerabilidades reportadas (CVE)",
         "file_path": "top10_vulnerabilidades.py"
     },
