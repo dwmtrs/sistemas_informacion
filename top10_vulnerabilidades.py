@@ -31,4 +31,3 @@ def ejecutar():
     except requests.RequestException as e:
         print(f"Error al obtener las vulnerabilidades: {e}")
 
-
